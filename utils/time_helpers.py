@@ -1,0 +1,51 @@
+"""time_helpers.py — Locale-aware time formatting utilities."""
+
+import datetime
+
+DAYS_ES = ("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom")
+
+MONTHS_ES = (
+    "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+    "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+)
+
+
+def format_hms(dt: datetime.datetime) -> str:
+    """Return HH:MM:SS string from a datetime object."""
+    return dt.strftime("%H:%M:%S")
+
+
+def format_date_es(dt: datetime.datetime) -> str:
+    """Return 'DOW DD MON' in Spanish upper-case, e.g. 'LUN 27 ABR'."""
+    dow = DAYS_ES[dt.weekday()].upper()
+    mon = MONTHS_ES[dt.month - 1].upper()
+    return f"{dow} {dt.day:02d} {mon}"
+
+
+def format_year(dt: datetime.datetime) -> str:
+    """Return the four-digit year as a string."""
+    return str(dt.year)
+
+
+def format_stopwatch(centiseconds: int) -> str:
+    """
+    Convert a raw centisecond count to MM:SS.cs display string.
+
+    centiseconds=6523 → '01:05.23'
+    """
+    cs = centiseconds % 100
+    total_seconds = centiseconds // 100
+    secs = total_seconds % 60
+    mins = total_seconds // 60
+    return f"{mins:02d}:{secs:02d}.{cs:02d}"
+
+
+def format_countdown(total_seconds: int) -> str:
+    """
+    Convert a raw second count to MM:SS display string.
+
+    total_seconds=125 → '02:05'
+    """
+    mins = total_seconds // 60
+    secs = total_seconds % 60
+    return f"{mins:02d}:{secs:02d}"
