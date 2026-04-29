@@ -19,6 +19,8 @@ class AppWindow:
     PANEL_BG     = "#1a0e06"
     PANEL_BORDER = "#5C3A1E"
     DEEP_WOOD    = "#3D1F0A"
+    BTN_BG       = "#3D1F0A"
+    BTN_ACTIVE   = "#5C2E0E"
 
     TAB_NAMES = ("RELOJ", "CRONO", "ALARMA", "CUENTA")
 
@@ -26,6 +28,7 @@ class AppWindow:
         self._root = root
         self._clock_after_id: str | None = None
         self._active_tab = 0
+        self._manual_time: datetime.datetime | None = None
 
         self._setup_root()
         self._build_layout()
@@ -127,19 +130,7 @@ class AppWindow:
         content_area = tk.Frame(outer, bg=self.APP_BG)
         content_area.pack(fill="both", expand=True)
 
-        self._reloj_frame = tk.Frame(content_area, bg=self.APP_BG)
-        tk.Label(
-            self._reloj_frame,
-            text="El reloj siempre está activo.",
-            bg=self.APP_BG, fg=self.MUTED_GOLD,
-            font=("Georgia", 9),
-        ).pack(pady=20)
-        tk.Label(
-            self._reloj_frame,
-            text="✦",
-            bg=self.APP_BG, fg=self.DARK_GOLD,
-            font=("Georgia", 18),
-        ).pack()
+        self._reloj_frame = self._build_reloj_panel(content_area)
 
         self._stopwatch = Stopwatch(content_area)
         self._alarm = Alarm(content_area, on_trigger=self._analog.flash_border)
@@ -153,6 +144,133 @@ class AppWindow:
         ]
 
         self._switch_tab(0)
+
+    def _build_reloj_panel(self, parent: tk.Widget) -> tk.Frame:
+        frame = tk.Frame(parent, bg=self.APP_BG)
+
+        tk.Label(
+            frame, text="— ajuste de hora —",
+            bg=self.APP_BG, fg=self.PANEL_BORDER,
+            font=("Georgia", 9),
+        ).pack(pady=(14, 8))
+
+        # Spinbox row: HH : MM : SS
+        spin_row = tk.Frame(frame, bg=self.APP_BG)
+        spin_row.pack()
+
+        spin_cfg = dict(
+            width=3,
+            font=("Courier New", 18),
+            bg=self.PANEL_BG, fg=self.GOLD,
+            insertbackground=self.GOLD,
+            buttonbackground=self.BTN_BG,
+            relief="flat",
+            justify="center",
+        )
+        sep_cfg = dict(bg=self.APP_BG, fg=self.MUTED_GOLD, font=("Courier New", 18, "bold"))
+
+        now = datetime.datetime.now()
+
+        self._set_h = tk.StringVar(value=f"{now.hour:02d}")
+        self._set_m = tk.StringVar(value=f"{now.minute:02d}")
+        self._set_s = tk.StringVar(value=f"{now.second:02d}")
+
+        self._spin_h = tk.Spinbox(
+            spin_row, from_=0, to=23, wrap=True,
+            textvariable=self._set_h, format="%02.0f",
+            command=self._preview_manual_time, **spin_cfg,
+        )
+        self._spin_h.pack(side="left")
+        self._spin_h.bind("<KeyRelease>", lambda _: self._preview_manual_time())
+
+        tk.Label(spin_row, text=":", **sep_cfg).pack(side="left", padx=2)
+
+        self._spin_m = tk.Spinbox(
+            spin_row, from_=0, to=59, wrap=True,
+            textvariable=self._set_m, format="%02.0f",
+            command=self._preview_manual_time, **spin_cfg,
+        )
+        self._spin_m.pack(side="left")
+        self._spin_m.bind("<KeyRelease>", lambda _: self._preview_manual_time())
+
+        tk.Label(spin_row, text=":", **sep_cfg).pack(side="left", padx=2)
+
+        self._spin_s = tk.Spinbox(
+            spin_row, from_=0, to=59, wrap=True,
+            textvariable=self._set_s, format="%02.0f",
+            command=self._preview_manual_time, **spin_cfg,
+        )
+        self._spin_s.pack(side="left")
+        self._spin_s.bind("<KeyRelease>", lambda _: self._preview_manual_time())
+
+        # Buttons
+        btn_row = tk.Frame(frame, bg=self.APP_BG)
+        btn_row.pack(pady=(14, 0))
+
+        btn_cfg = dict(
+            font=("Georgia", 9, "bold"),
+            bg=self.BTN_BG, fg=self.GOLD,
+            activebackground=self.BTN_ACTIVE,
+            activeforeground=self.GOLD,
+            relief="flat", bd=0,
+            padx=12, pady=5,
+            cursor="hand2",
+        )
+
+        tk.Button(
+            btn_row, text="Establecer hora",
+            command=self._apply_manual_time, **btn_cfg,
+        ).pack(side="left", padx=6)
+
+        tk.Button(
+            btn_row, text="Hora local",
+            command=self._restore_local_time, **btn_cfg,
+        ).pack(side="left", padx=6)
+
+        # Status label: shows whether clock is on manual or local time
+        self._reloj_status = tk.StringVar(value="")
+        tk.Label(
+            frame, textvariable=self._reloj_status,
+            bg=self.APP_BG, fg=self.MUTED_GOLD,
+            font=("Georgia", 8),
+        ).pack(pady=(8, 0))
+
+        return frame
+
+    def _preview_manual_time(self):
+        """Update the clock face live as the user scrolls the spinboxes."""
+        try:
+            h = int(self._set_h.get())
+            m = int(self._set_m.get())
+            s = int(self._set_s.get())
+            preview = datetime.datetime.now().replace(hour=h, minute=m, second=s)
+            self._analog.update_hands(preview)
+        except ValueError:
+            pass
+
+    def _apply_manual_time(self):
+        try:
+            h = int(self._set_h.get())
+            m = int(self._set_m.get())
+            s = int(self._set_s.get())
+            if not (0 <= h <= 23 and 0 <= m <= 59 and 0 <= s <= 59):
+                raise ValueError
+        except ValueError:
+            self._reloj_status.set("⚠  Hora inválida")
+            return
+
+        self._manual_time = datetime.datetime.now().replace(
+            hour=h, minute=m, second=s, microsecond=0
+        )
+        self._reloj_status.set(f"✦  Hora fijada: {h:02d}:{m:02d}:{s:02d}")
+
+    def _restore_local_time(self):
+        self._manual_time = None
+        now = datetime.datetime.now()
+        self._set_h.set(f"{now.hour:02d}")
+        self._set_m.set(f"{now.minute:02d}")
+        self._set_s.set(f"{now.second:02d}")
+        self._reloj_status.set("✦  Hora local activa")
 
     def _switch_tab(self, index: int):
         if self._active_tab == 1:
@@ -185,7 +303,13 @@ class AppWindow:
         self._tick_clock()
 
     def _tick_clock(self):
-        now = datetime.datetime.now()
+        if self._manual_time is not None:
+            # Advance the frozen time by 1 second each tick so hands keep moving
+            self._manual_time += datetime.timedelta(seconds=1)
+            now = self._manual_time
+        else:
+            now = datetime.datetime.now()
+
         self._analog.update_hands(now)
         self._time_var.set(format_hms(now))
         self._date_var.set(format_date_es(now))
