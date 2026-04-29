@@ -29,9 +29,11 @@ class AppWindow:
         self._clock_after_id: str | None = None
         self._active_tab = 0
         self._manual_time: datetime.datetime | None = None
+        self._pending_dismissals: list = []
 
         self._setup_root()
         self._build_layout()
+        self._build_alarm_banner()
         self._start_clock_loop()
 
     def _setup_root(self):
@@ -133,7 +135,11 @@ class AppWindow:
         self._reloj_frame = self._build_reloj_panel(content_area)
 
         self._stopwatch = Stopwatch(content_area)
-        self._alarm = Alarm(content_area, on_trigger=self._analog.flash_border)
+        self._alarm = Alarm(
+            content_area,
+            on_trigger=self._analog.flash_border,
+            on_dismiss_needed=self._on_alarm_needs_dismiss,
+        )
         self._countdown = Countdown(content_area, on_trigger=self._analog.flash_border)
 
         self._analog.on_drag = self._on_clock_drag
@@ -259,6 +265,37 @@ class AppWindow:
         self._set_m.set(f"{now.minute:02d}")
         self._set_s.set(f"{now.second:02d}")
         self._reloj_status.set("✦  Hora local activa")
+
+    def _build_alarm_banner(self):
+        """Small floating banner placed over the window when an alarm fires."""
+        self._alarm_banner = tk.Frame(
+            self._root,
+            bg="#5C2E0E",
+            highlightbackground="#8B0000",
+            highlightthickness=1,
+        )
+        tk.Button(
+            self._alarm_banner,
+            text="  🔔  ¡ALARMA!   —   SILENCIAR  ✕  ",
+            command=self._dismiss_alarm_banner,
+            bg="#5C2E0E", fg=self.GOLD,
+            font=("Georgia", 9, "bold"),
+            activebackground="#8B0000",
+            activeforeground=self.GOLD,
+            relief="flat", bd=0,
+            cursor="hand2",
+        ).pack(fill="both", expand=True, padx=4, pady=3)
+
+    def _on_alarm_needs_dismiss(self, dismiss_fn):
+        self._pending_dismissals.append(dismiss_fn)
+        self._alarm_banner.place(relx=0.5, y=10, anchor="n", width=300, height=30)
+        self._alarm_banner.lift()
+
+    def _dismiss_alarm_banner(self):
+        for fn in self._pending_dismissals:
+            fn()
+        self._pending_dismissals.clear()
+        self._alarm_banner.place_forget()
 
     def _on_clock_drag(self, dt: datetime.datetime):
         self._manual_time = dt

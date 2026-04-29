@@ -26,8 +26,9 @@ class Alarm:
     LABEL_COLOR  = "#5C3A1E"
     RED          = "#8B0000"
 
-    def __init__(self, parent: tk.Widget, on_trigger=None):
+    def __init__(self, parent: tk.Widget, on_trigger=None, on_dismiss_needed=None):
         self._on_trigger = on_trigger
+        self._on_dismiss_needed = on_dismiss_needed
         self._alarms: list[dict] = []
         self._after_id: str | None = None
 
@@ -194,17 +195,28 @@ class Alarm:
 
     def _fire(self, alarm: dict):
         alarm["status_var"].set("🔔 ¡ALARMA!")
+        alarm["beeping"] = True
         if self._on_trigger:
             self._on_trigger()
-        self.frame.after(0, _beep)
+        self._repeat_beep(alarm)
+        if self._on_dismiss_needed:
+            self._on_dismiss_needed(lambda a=alarm: self._dismiss(a))
 
-        # Reset status and triggered flag once the minute is over
-        def _reset():
-            alarm["triggered"] = False
-            if alarm["active"]:
-                alarm["status_var"].set("✦ ACTIVA")
+    def _repeat_beep(self, alarm: dict):
+        if not alarm.get("beeping"):
+            return
+        import threading
+        threading.Thread(target=_beep, daemon=True).start()
+        alarm["beep_after"] = self.frame.after(3500, lambda: self._repeat_beep(alarm))
 
-        self.frame.after(65000, _reset)
+    def _dismiss(self, alarm: dict):
+        alarm["beeping"] = False
+        if alarm.get("beep_after"):
+            self.frame.after_cancel(alarm["beep_after"])
+            alarm["beep_after"] = None
+        alarm["status_var"].set("✦ ACTIVA" if alarm["active"] else "✦ INACTIVA")
+        # Reset triggered after 2 min so the alarm can fire again the next day
+        self.frame.after(120_000, lambda: alarm.update({"triggered": False}))
 
     # ── Lifecycle (alarm loop is tab-independent, nothing to stop) ─────
 
