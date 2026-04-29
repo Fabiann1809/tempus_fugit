@@ -2,7 +2,7 @@
 
 import tkinter as tk
 import datetime
-from data_structures.clock_memory import ClockMemory, TimeRecord
+from core.clock_memory import ClockMemory, TimeRecord
 from utils.time_helpers import format_stopwatch
 
 
