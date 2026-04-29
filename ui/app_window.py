@@ -139,6 +139,7 @@ class AppWindow:
             content_area,
             on_trigger=self._analog.flash_border,
             on_dismiss_needed=self._on_alarm_needs_dismiss,
+            get_time=lambda: self._manual_time or datetime.datetime.now(),
         )
         self._countdown = Countdown(content_area, on_trigger=self._analog.flash_border)
 

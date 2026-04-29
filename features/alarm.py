@@ -26,9 +26,11 @@ class Alarm:
     LABEL_COLOR  = "#5C3A1E"
     RED          = "#8B0000"
 
-    def __init__(self, parent: tk.Widget, on_trigger=None, on_dismiss_needed=None):
+    def __init__(self, parent: tk.Widget, on_trigger=None,
+                 on_dismiss_needed=None, get_time=None):
         self._on_trigger = on_trigger
         self._on_dismiss_needed = on_dismiss_needed
+        self._get_time = get_time          # callable → datetime; falls back to now()
         self._alarms: list[dict] = []
         self._after_id: str | None = None
 
@@ -184,11 +186,14 @@ class Alarm:
     # ── Check loop — always running, tab-independent ───────────────────
 
     def _check_loop(self):
-        now = datetime.datetime.now()
+        now = self._get_time() if self._get_time else datetime.datetime.now()
         for alarm in self._alarms:
-            if (alarm["active"] and not alarm["triggered"]
-                    and now.hour == alarm["hour"]
-                    and now.minute == alarm["minute"]):
+            at_alarm_time = (now.hour == alarm["hour"]
+                             and now.minute == alarm["minute"])
+            # Auto-reset triggered when displayed time has left the alarm minute
+            if alarm["triggered"] and not at_alarm_time:
+                alarm["triggered"] = False
+            if alarm["active"] and not alarm["triggered"] and at_alarm_time:
                 alarm["triggered"] = True
                 self._fire(alarm)
         self._after_id = self.frame.after(1000, self._check_loop)
@@ -215,8 +220,8 @@ class Alarm:
             self.frame.after_cancel(alarm["beep_after"])
             alarm["beep_after"] = None
         alarm["status_var"].set("✦ ACTIVA" if alarm["active"] else "✦ INACTIVA")
-        # Reset triggered after 2 min so the alarm can fire again the next day
-        self.frame.after(120_000, lambda: alarm.update({"triggered": False}))
+        # triggered resets automatically in _check_loop once the displayed
+        # time moves away from the alarm minute, so no manual reset needed
 
     # ── Lifecycle (alarm loop is tab-independent, nothing to stop) ─────
 
