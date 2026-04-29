@@ -40,14 +40,14 @@ class Countdown:
             f, text="— cuenta regresiva —",
             bg=self.BG, fg=self.LABEL_COLOR,
             font=("Georgia", 9),
-        ).pack(pady=(10, 4))
+        ).pack(pady=(6, 4))
 
         input_frame = tk.Frame(f, bg=self.BG)
-        input_frame.pack(pady=6)
+        input_frame.pack(pady=4)
 
         spin_cfg = dict(
             width=4,
-            font=("Courier New", 16),
+            font=("Courier New", 14),
             bg="#2C1810", fg=self.GOLD,
             insertbackground=self.GOLD,
             relief="flat",
@@ -73,7 +73,7 @@ class Countdown:
         tk.Label(
             input_frame, text=":",
             bg=self.BG, fg=self.GOLD,
-            font=("Courier New", 18, "bold"),
+            font=("Courier New", 16, "bold"),
         ).grid(row=1, column=1)
 
         tk.Label(
@@ -96,10 +96,10 @@ class Countdown:
         tk.Label(
             f, textvariable=self._display_var,
             bg=self.PANEL_BG, fg=self.DARK_GOLD,
-            font=("Courier New", 28),
+            font=("Courier New", 24),
             relief="flat", bd=0,
-            padx=20, pady=6,
-        ).pack(pady=(8, 8))
+            padx=20, pady=4,
+        ).pack(pady=(6, 6))
 
         btn_frame = tk.Frame(f, bg=self.BG)
         btn_frame.pack(pady=4)

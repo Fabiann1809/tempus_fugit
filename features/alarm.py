@@ -24,15 +24,16 @@ class Alarm:
     BTN_BG       = "#3D1F0A"
     BTN_ACTIVE   = "#5C2E0E"
     LABEL_COLOR  = "#5C3A1E"
+    RED          = "#8B0000"
 
     def __init__(self, parent: tk.Widget, on_trigger=None):
-        self._after_id: str | None = None
-        self._active = False
-        self._triggered = False
         self._on_trigger = on_trigger
+        self._alarms: list[dict] = []
+        self._after_id: str | None = None
 
         self.frame = tk.Frame(parent, bg=self.BG)
         self._build_ui()
+        self._check_loop()  # starts immediately and never stops
 
     def _build_ui(self):
         f = self.frame
@@ -41,137 +42,174 @@ class Alarm:
             f, text="— alarma —",
             bg=self.BG, fg=self.LABEL_COLOR,
             font=("Georgia", 9),
-        ).pack(pady=(10, 4))
+        ).pack(pady=(8, 4))
 
-        input_frame = tk.Frame(f, bg=self.BG)
-        input_frame.pack(pady=8)
-
-        tk.Label(
-            input_frame, text="Hora:",
-            bg=self.BG, fg=self.MUTED_GOLD,
-            font=("Georgia", 11),
-        ).grid(row=0, column=0, padx=(0, 6))
-
-        self._hour_var = tk.StringVar(value="07")
-        self._min_var = tk.StringVar(value="00")
+        # Input row: HH : MM + add button
+        add_frame = tk.Frame(f, bg=self.BG)
+        add_frame.pack(pady=(0, 6))
 
         spin_cfg = dict(
             width=3,
-            font=("Courier New", 14),
-            bg="#2C1810", fg=self.GOLD,
+            font=("Courier New", 13),
+            bg=self.PANEL_BG, fg=self.GOLD,
             insertbackground=self.GOLD,
             relief="flat",
-            buttonbackground="#3D1F0A",
+            buttonbackground=self.BTN_BG,
         )
 
-        self._hour_spin = tk.Spinbox(
-            input_frame,
-            from_=0, to=23, wrap=True,
-            textvariable=self._hour_var,
-            format="%02.0f",
+        self._hour_var = tk.StringVar(value="07")
+        tk.Spinbox(
+            add_frame, from_=0, to=23, wrap=True,
+            textvariable=self._hour_var, format="%02.0f",
             **spin_cfg,
-        )
-        self._hour_spin.grid(row=0, column=1)
+        ).pack(side="left")
 
-        tk.Label(
-            input_frame, text=":",
-            bg=self.BG, fg=self.GOLD,
-            font=("Courier New", 14, "bold"),
-        ).grid(row=0, column=2)
+        tk.Label(add_frame, text=":", bg=self.BG, fg=self.GOLD,
+                 font=("Courier New", 13, "bold")).pack(side="left", padx=2)
 
-        self._min_spin = tk.Spinbox(
-            input_frame,
-            from_=0, to=59, wrap=True,
-            textvariable=self._min_var,
-            format="%02.0f",
+        self._min_var = tk.StringVar(value="00")
+        tk.Spinbox(
+            add_frame, from_=0, to=59, wrap=True,
+            textvariable=self._min_var, format="%02.0f",
             **spin_cfg,
-        )
-        self._min_spin.grid(row=0, column=3)
+        ).pack(side="left")
 
-        self._toggle_btn = tk.Button(
-            f, text="ACTIVAR",
-            command=self._toggle,
+        tk.Button(
+            add_frame, text="+ AGREGAR",
+            command=self._add_alarm,
             bg=self.BTN_BG, fg=self.GOLD,
-            font=("Georgia", 10, "bold"),
+            font=("Georgia", 9, "bold"),
             activebackground=self.BTN_ACTIVE,
             activeforeground=self.GOLD,
             relief="flat", bd=0,
-            padx=16, pady=6,
+            padx=10, pady=4,
             cursor="hand2",
+        ).pack(side="left", padx=(10, 0))
+
+        # Alarm list
+        list_outer = tk.Frame(f, bg=self.PANEL_BORDER, bd=1)
+        list_outer.pack(fill="both", expand=True, padx=10, pady=(0, 6))
+
+        self._list_frame = tk.Frame(list_outer, bg=self.PANEL_BG)
+        self._list_frame.pack(fill="both", expand=True, padx=1, pady=1)
+
+        self._empty_lbl = tk.Label(
+            self._list_frame,
+            text="No hay alarmas registradas.",
+            bg=self.PANEL_BG, fg=self.MUTED_GOLD,
+            font=("Georgia", 9),
         )
-        self._toggle_btn.pack(pady=10)
+        self._empty_lbl.pack(pady=14)
 
-        self._status_var = tk.StringVar(value="✦  INACTIVA")
-        tk.Label(
-            f, textvariable=self._status_var,
-            bg=self.BG, fg=self.MUTED_GOLD,
-            font=("Georgia", 10),
-        ).pack()
+    # ── Alarm management ───────────────────────────────────────────────
 
-        self._scheduled_var = tk.StringVar(value="")
-        tk.Label(
-            f, textvariable=self._scheduled_var,
-            bg=self.BG, fg=self.MUTED_GOLD,
-            font=("Courier New", 10),
-        ).pack(pady=(4, 0))
-
-    def _toggle(self):
-        self._deactivate() if self._active else self._activate()
-
-    def _activate(self):
+    def _add_alarm(self):
         try:
             h = int(self._hour_var.get())
             m = int(self._min_var.get())
             if not (0 <= h <= 23 and 0 <= m <= 59):
                 raise ValueError
         except ValueError:
-            self._status_var.set("⚠  Hora inválida")
             return
 
-        self._active = True
-        self._triggered = False
-        self._toggle_btn.config(text="DESACTIVAR")
-        self._status_var.set("✦  ACTIVA")
-        self._scheduled_var.set(f"programada: {h:02d}:{m:02d}")
-        self._hour_spin.config(state="disabled")
-        self._min_spin.config(state="disabled")
-        self._check_alarm()
+        self._empty_lbl.pack_forget()
 
-    def _deactivate(self):
-        self._active = False
-        if self._after_id:
-            self.frame.after_cancel(self._after_id)
-            self._after_id = None
-        self._toggle_btn.config(text="ACTIVAR")
-        self._status_var.set("✦  INACTIVA")
-        self._scheduled_var.set("")
-        self._hour_spin.config(state="normal")
-        self._min_spin.config(state="normal")
+        alarm: dict = {
+            "hour": h, "minute": m,
+            "active": True, "triggered": False,
+        }
 
-    def _check_alarm(self):
-        if not self._active:
-            return
+        row = tk.Frame(self._list_frame, bg=self.PANEL_BG)
+        row.pack(fill="x", padx=4, pady=2)
+
+        tk.Label(
+            row, text=f"{h:02d}:{m:02d}",
+            bg=self.PANEL_BG, fg=self.GOLD,
+            font=("Courier New", 13, "bold"),
+        ).pack(side="left", padx=(8, 10))
+
+        status_var = tk.StringVar(value="✦ ACTIVA")
+        alarm["status_var"] = status_var
+        tk.Label(
+            row, textvariable=status_var,
+            bg=self.PANEL_BG, fg=self.MUTED_GOLD,
+            font=("Georgia", 8),
+            width=12, anchor="w",
+        ).pack(side="left")
+
+        small_btn = dict(
+            font=("Georgia", 8, "bold"),
+            bg=self.BTN_BG, fg=self.GOLD,
+            activebackground=self.BTN_ACTIVE,
+            activeforeground=self.GOLD,
+            relief="flat", bd=0,
+            padx=6, pady=2,
+            cursor="hand2",
+        )
+
+        toggle_btn = tk.Button(
+            row, text="OFF",
+            command=lambda a=alarm: self._toggle_alarm(a),
+            **small_btn,
+        )
+        toggle_btn.pack(side="left", padx=4)
+        alarm["toggle_btn"] = toggle_btn
+
+        tk.Button(
+            row, text="✕",
+            command=lambda r=row, a=alarm: self._delete_alarm(r, a),
+            **small_btn,
+        ).pack(side="right", padx=(4, 8))
+
+        alarm["row"] = row
+        self._alarms.append(alarm)
+
+    def _toggle_alarm(self, alarm: dict):
+        alarm["active"] = not alarm["active"]
+        alarm["triggered"] = False
+        if alarm["active"]:
+            alarm["status_var"].set("✦ ACTIVA")
+            alarm["toggle_btn"].config(text="OFF")
+        else:
+            alarm["status_var"].set("✦ INACTIVA")
+            alarm["toggle_btn"].config(text="ON")
+
+    def _delete_alarm(self, row: tk.Frame, alarm: dict):
+        self._alarms.remove(alarm)
+        row.destroy()
+        if not self._alarms:
+            self._empty_lbl.pack(pady=14)
+
+    # ── Check loop — always running, tab-independent ───────────────────
+
+    def _check_loop(self):
         now = datetime.datetime.now()
-        h = int(self._hour_var.get())
-        m = int(self._min_var.get())
-        if now.hour == h and now.minute == m and not self._triggered:
-            self._triggered = True
-            self._fire()
-        self._after_id = self.frame.after(1000, self._check_alarm)
+        for alarm in self._alarms:
+            if (alarm["active"] and not alarm["triggered"]
+                    and now.hour == alarm["hour"]
+                    and now.minute == alarm["minute"]):
+                alarm["triggered"] = True
+                self._fire(alarm)
+        self._after_id = self.frame.after(1000, self._check_loop)
 
-    def _fire(self):
-        self._status_var.set("🔔  ¡ALARMA!")
+    def _fire(self, alarm: dict):
+        alarm["status_var"].set("🔔 ¡ALARMA!")
         if self._on_trigger:
             self._on_trigger()
         self.frame.after(0, _beep)
-        # Guard: deactivate after ringing so it doesn't retrigger every second of the same minute
-        self.frame.after(4000, self._deactivate)
+
+        # Reset status and triggered flag once the minute is over
+        def _reset():
+            alarm["triggered"] = False
+            if alarm["active"]:
+                alarm["status_var"].set("✦ ACTIVA")
+
+        self.frame.after(65000, _reset)
+
+    # ── Lifecycle (alarm loop is tab-independent, nothing to stop) ─────
 
     def stop(self):
-        if self._after_id:
-            self.frame.after_cancel(self._after_id)
-            self._after_id = None
+        pass
 
     def resume(self):
-        if self._active:
-            self._check_alarm()
+        pass

@@ -271,8 +271,6 @@ class AppWindow:
     def _switch_tab(self, index: int):
         if self._active_tab == 1:
             self._stopwatch.stop()
-        elif self._active_tab == 2:
-            self._alarm.stop()
         elif self._active_tab == 3:
             self._countdown.stop()
 
@@ -290,8 +288,6 @@ class AppWindow:
 
         if index == 1:
             self._stopwatch.resume()
-        elif index == 2:
-            self._alarm.resume()
         elif index == 3:
             self._countdown.resume()
 

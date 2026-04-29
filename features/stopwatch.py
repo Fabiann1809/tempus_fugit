@@ -34,7 +34,7 @@ class Stopwatch:
             f, text="— cronómetro —",
             bg=self.BG, fg=self.LABEL_COLOR,
             font=("Georgia", 9),
-        ).pack(pady=(8, 2))
+        ).pack(pady=(6, 2))
 
         self._display_var = tk.StringVar(value="00:00.00")
         tk.Label(
@@ -42,11 +42,11 @@ class Stopwatch:
             bg=self.PANEL_BG, fg=self.DARK_GOLD,
             font=("Courier New", 28),
             relief="flat", bd=0,
-            padx=20, pady=6,
-        ).pack(pady=(4, 8))
+            padx=20, pady=4,
+        ).pack(pady=(2, 6))
 
         btn_frame = tk.Frame(f, bg=self.BG)
-        btn_frame.pack(pady=4)
+        btn_frame.pack(pady=2)
 
         btn_cfg = dict(
             bg=self.BTN_BG, fg=self.GOLD,
@@ -75,43 +75,55 @@ class Stopwatch:
         )
         self._reset_btn.grid(row=0, column=2, padx=5)
 
+        # Lap history panel
         lap_outer = tk.Frame(f, bg=self.PANEL_BORDER, bd=1)
-        lap_outer.pack(fill="both", expand=True, padx=12, pady=(8, 4))
+        lap_outer.pack(fill="both", expand=True, padx=12, pady=(6, 4))
 
         lap_inner = tk.Frame(lap_outer, bg=self.PANEL_BG)
         lap_inner.pack(fill="both", expand=True, padx=1, pady=1)
 
+        # Navigation header
         nav_frame = tk.Frame(lap_inner, bg=self.PANEL_BG)
         nav_frame.pack(fill="x", padx=6, pady=(4, 0))
 
         nav_btn_cfg = dict(
             bg=self.BTN_BG, fg=self.GOLD,
-            font=("Georgia", 10, "bold"),
+            font=("Georgia", 8, "bold"),
             activebackground=self.BTN_ACTIVE,
             activeforeground=self.GOLD,
             relief="flat", bd=0,
-            padx=10, pady=3,
+            padx=8, pady=2,
             cursor="hand2",
         )
-        tk.Button(nav_frame, text="◀", command=self._nav_backward, **nav_btn_cfg).pack(side="left")
-        tk.Button(nav_frame, text="▶", command=self._nav_forward, **nav_btn_cfg).pack(side="right")
+        tk.Button(
+            nav_frame, text="← ANTERIOR",
+            command=self._nav_backward, **nav_btn_cfg,
+        ).pack(side="left")
+
+        self._nav_indicator = tk.StringVar(value="HISTORIAL DE VUELTAS")
         tk.Label(
-            nav_frame, text="VUELTAS",
+            nav_frame, textvariable=self._nav_indicator,
             bg=self.PANEL_BG, fg=self.MUTED_GOLD,
-            font=("Georgia", 8),
+            font=("Georgia", 7),
         ).pack(side="left", expand=True)
+
+        tk.Button(
+            nav_frame, text="SIGUIENTE →",
+            command=self._nav_forward, **nav_btn_cfg,
+        ).pack(side="right")
 
         self._lap_text = tk.Text(
             lap_inner,
             bg=self.PANEL_BG, fg=self.MUTED_GOLD,
             font=("Courier New", 10),
             relief="flat", bd=0,
-            height=6,
+            height=5,
             state="disabled",
             cursor="arrow",
         )
         self._lap_text.pack(fill="both", expand=True, padx=6, pady=(2, 6))
-        self._lap_text.tag_config("highlight", foreground=self.GOLD)
+        self._lap_text.tag_config("highlight", foreground=self.GOLD,
+                                  background="#1e1206")
 
     def _toggle_start(self):
         import time as _time
@@ -152,6 +164,7 @@ class Stopwatch:
         self._start_btn.config(text="INICIAR")
         self._lap_btn.config(state="disabled")
         self._reset_btn.config(state="disabled")
+        self._nav_indicator.set("HISTORIAL DE VUELTAS")
         self._refresh_lap_display()
 
     def _nav_forward(self):
@@ -179,19 +192,30 @@ class Stopwatch:
 
     def _refresh_lap_display(self):
         records = self._memory.all_records()
+        total = len(records)
+
         self._lap_text.config(state="normal")
         self._lap_text.delete("1.0", "end")
+
         for rec in records:
             label = f"  Vuelta {rec.lap_number:>2}   {rec.elapsed_time_str}   {rec.timestamp}\n"
-            tag = "highlight" if rec is self._current_node else ""
-            self._lap_text.insert("end", label, tag)
+            if rec is self._current_node:
+                self._lap_text.insert("end", label, "highlight")
+            else:
+                self._lap_text.insert("end", label)
+
         self._lap_text.config(state="disabled")
-        if records and self._current_node:
+
+        # Update navigation indicator
+        if self._current_node is not None and total > 0:
             idx = next(
-                (i for i, r in enumerate(records) if r is self._current_node), None
+                (i + 1 for i, r in enumerate(records) if r is self._current_node), None
             )
             if idx is not None:
-                self._lap_text.see(f"{idx + 1}.0")
+                self._nav_indicator.set(f"vuelta {idx} de {total}")
+                self._lap_text.see(f"{idx}.0")
+        elif total == 0:
+            self._nav_indicator.set("HISTORIAL DE VUELTAS")
 
     def stop(self):
         if self._running and self._after_id:
