@@ -139,6 +139,7 @@ class AppWindow:
             content_area,
             on_trigger=self._analog.flash_border,
             on_dismiss_needed=self._on_alarm_needs_dismiss,
+            on_all_dismissed=self._dismiss_alarm_banner,
             get_time=lambda: self._manual_time or datetime.datetime.now(),
         )
         self._countdown = Countdown(content_area, on_trigger=self._analog.flash_border)
@@ -245,9 +246,9 @@ class AppWindow:
 
     def _apply_manual_time(self):
         try:
-            h = int(self._set_h.get())
-            m = int(self._set_m.get())
-            s = int(self._set_s.get())
+            h = int(self._set_h.get().strip() or "0")
+            m = int(self._set_m.get().strip() or "0")
+            s = int(self._set_s.get().strip() or "0")
             if not (0 <= h <= 23 and 0 <= m <= 59 and 0 <= s <= 59):
                 raise ValueError
         except ValueError:
@@ -268,16 +269,16 @@ class AppWindow:
         self._reloj_status.set("✦  Hora local activa")
 
     def _build_alarm_banner(self):
-        """Small floating banner placed over the window when an alarm fires."""
         self._alarm_banner = tk.Frame(
             self._root,
             bg="#5C2E0E",
             highlightbackground="#8B0000",
             highlightthickness=1,
         )
+        self._banner_text = tk.StringVar()
         tk.Button(
             self._alarm_banner,
-            text="  🔔  ¡ALARMA!   —   SILENCIAR  ✕  ",
+            textvariable=self._banner_text,
             command=self._dismiss_alarm_banner,
             bg="#5C2E0E", fg=self.GOLD,
             font=("Georgia", 9, "bold"),
@@ -287,8 +288,16 @@ class AppWindow:
             cursor="hand2",
         ).pack(fill="both", expand=True, padx=4, pady=3)
 
+    def _update_banner_text(self):
+        n = len(self._pending_dismissals)
+        if n == 1:
+            self._banner_text.set("  🔔  ¡ALARMA!   —   SILENCIAR  ✕  ")
+        else:
+            self._banner_text.set(f"  🔔  ¡{n} ALARMAS!   —   SILENCIAR TODAS  ✕  ")
+
     def _on_alarm_needs_dismiss(self, dismiss_fn):
         self._pending_dismissals.append(dismiss_fn)
+        self._update_banner_text()
         self._alarm_banner.place(relx=0.5, y=10, anchor="n", width=300, height=30)
         self._alarm_banner.lift()
 

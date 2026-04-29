@@ -30,9 +30,10 @@ class Alarm:
     RED          = "#8B0000"
 
     def __init__(self, parent: tk.Widget, on_trigger=None,
-                 on_dismiss_needed=None, get_time=None):
+                 on_dismiss_needed=None, on_all_dismissed=None, get_time=None):
         self._on_trigger = on_trigger
         self._on_dismiss_needed = on_dismiss_needed
+        self._on_all_dismissed = on_all_dismissed
         self._get_time = get_time          # callable → datetime; falls back to now()
         self._alarms: list[dict] = []
         self._after_id: str | None = None
@@ -107,17 +108,34 @@ class Alarm:
         )
         self._empty_lbl.pack(pady=14)
 
+        self._error_lbl = tk.Label(
+            f, text="",
+            bg=self.BG, fg="#FF5555",
+            font=("Georgia", 8),
+        )
+        self._error_lbl.pack(pady=(0, 4))
+
     # ── Alarm management ───────────────────────────────────────────────
+
+    def _show_error(self, msg: str):
+        self._error_lbl.config(text=msg)
+        self.frame.after(1500, lambda: self._error_lbl.config(text=""))
 
     def _add_alarm(self):
         try:
-            h = int(self._hour_var.get())
-            m = int(self._min_var.get())
+            h = int(self._hour_var.get().strip() or "0")
+            m = int(self._min_var.get().strip() or "0")
             if not (0 <= h <= 23 and 0 <= m <= 59):
                 raise ValueError
         except ValueError:
+            self._show_error("⚠  Hora inválida")
             return
 
+        if any(a["hour"] == h and a["minute"] == m for a in self._alarms):
+            self._show_error(f"⚠  Alarma {h:02d}:{m:02d} ya existe")
+            return
+
+        self._error_lbl.config(text="")
         self._empty_lbl.pack_forget()
 
         alarm: dict = {
@@ -181,10 +199,16 @@ class Alarm:
             alarm["toggle_btn"].config(text="ON")
 
     def _delete_alarm(self, row: tk.Frame, alarm: dict):
+        was_beeping = alarm.get("beeping")
+        if was_beeping:
+            self._dismiss(alarm)
         self._alarms.remove(alarm)
         row.destroy()
         if not self._alarms:
             self._empty_lbl.pack(pady=14)
+        if was_beeping and not any(a.get("beeping") for a in self._alarms):
+            if self._on_all_dismissed:
+                self._on_all_dismissed()
 
     # ── Check loop — always running, tab-independent ───────────────────
 
