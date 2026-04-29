@@ -4,7 +4,6 @@ import sys
 
 
 def _beep():
-    """winsound on Windows; console bell fallback elsewhere."""
     try:
         import winsound
         winsound.Beep(880, 400)
@@ -16,7 +15,6 @@ def _beep():
 
 
 class Alarm:
-    """Alarm panel. on_trigger callback decouples the flash from the analog clock."""
 
     BG           = "#2C1810"
     PANEL_BG     = "#1a0e06"
@@ -26,7 +24,6 @@ class Alarm:
     BTN_BG       = "#3D1F0A"
     BTN_ACTIVE   = "#5C2E0E"
     LABEL_COLOR  = "#5C3A1E"
-    RED          = "#8B0000"
 
     def __init__(self, parent: tk.Widget, on_trigger=None):
         self._after_id: str | None = None
@@ -119,10 +116,7 @@ class Alarm:
         ).pack(pady=(4, 0))
 
     def _toggle(self):
-        if self._active:
-            self._deactivate()
-        else:
-            self._activate()
+        self._deactivate() if self._active else self._activate()
 
     def _activate(self):
         try:
@@ -170,7 +164,7 @@ class Alarm:
         if self._on_trigger:
             self._on_trigger()
         self.frame.after(0, _beep)
-        # Deactivate after firing so the alarm doesn't retrigger every second
+        # Guard: deactivate after ringing so it doesn't retrigger every second of the same minute
         self.frame.after(4000, self._deactivate)
 
     def stop(self):

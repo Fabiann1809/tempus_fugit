@@ -9,7 +9,6 @@ from utils.time_helpers import format_hms, format_date_es, format_year
 
 
 class AppWindow:
-    """Main window. Analog clock and digital strip run continuously on all tabs."""
 
     APP_BG       = "#2C1810"
     WOOD_BG      = "#6B3410"
@@ -17,7 +16,6 @@ class AppWindow:
     GOLD         = "#D4AF37"
     MUTED_GOLD   = "#8B6914"
     DARK_GOLD    = "#B8860B"
-    DARK_WOOD    = "#5C2E0E"
     PANEL_BG     = "#1a0e06"
     PANEL_BORDER = "#5C3A1E"
     DEEP_WOOD    = "#3D1F0A"
@@ -67,7 +65,6 @@ class AppWindow:
 
         clock_container = tk.Frame(outer, bg=self.WOOD_BG)
         clock_container.pack()
-
         self._analog = AnalogClock(clock_container)
         self._analog.pack()
 
@@ -106,7 +103,7 @@ class AppWindow:
         ).pack(anchor="e")
 
         tab_bar = tk.Frame(outer, bg=self.PANEL_BG)
-        tab_bar.pack(fill="x", padx=0, pady=(8, 0))
+        tab_bar.pack(fill="x", pady=(8, 0))
 
         self._tab_btns: list[tk.Button] = []
         for i, name in enumerate(self.TAB_NAMES):
@@ -130,7 +127,6 @@ class AppWindow:
         content_area = tk.Frame(outer, bg=self.APP_BG)
         content_area.pack(fill="both", expand=True)
 
-        # RELOJ tab is a placeholder; the clock above is always visible
         self._reloj_frame = tk.Frame(content_area, bg=self.APP_BG)
         tk.Label(
             self._reloj_frame,
@@ -173,10 +169,10 @@ class AppWindow:
         self._active_tab = index
 
         for i, btn in enumerate(self._tab_btns):
-            if i == index:
-                btn.config(bg=self.DEEP_WOOD, fg=self.GOLD)
-            else:
-                btn.config(bg=self.PANEL_BG, fg=self.MUTED_GOLD)
+            btn.config(
+                bg=self.DEEP_WOOD if i == index else self.PANEL_BG,
+                fg=self.GOLD if i == index else self.MUTED_GOLD,
+            )
 
         if index == 1:
             self._stopwatch.resume()

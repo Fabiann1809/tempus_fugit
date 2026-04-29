@@ -13,7 +13,6 @@ def _beep():
 
 
 class Countdown:
-    """Countdown timer. States: idle → running → paused → running | idle (reset)."""
 
     BG           = "#2C1810"
     PANEL_BG     = "#1a0e06"

@@ -28,7 +28,7 @@ class AnalogClock:
 
     def __init__(self, parent: tk.Widget):
         self._flash_id: str | None = None
-        self._flash_state = False
+        self._flash_count = 0
 
         self.canvas = tk.Canvas(
             parent,
@@ -48,7 +48,6 @@ class AnalogClock:
         self._draw_hands(dt)
 
     def flash_border(self, times: int = 5):
-        """Alternate border color gold/red for `times` cycles."""
         if self._flash_id is not None:
             self.canvas.after_cancel(self._flash_id)
         self._flash_count = times * 2
@@ -105,7 +104,7 @@ class AnalogClock:
                     tags="face",
                 )
 
-        # Separate oval so flash can recolor just the border without redrawing the face
+        # Separate item so flash_border can recolor it without redrawing the face
         self._border_id = self.canvas.create_oval(
             cx - r, cy - r, cx + r, cy + r,
             fill="", outline=self.FACE_BORDER, width=4,
@@ -120,7 +119,6 @@ class AnalogClock:
         m = dt.minute
         s = dt.second
 
-        # Fractional angles give smooth continuous movement
         h_angle = math.radians((h * 30) + (m * 0.5) - 90)
         self._draw_hand(cx, cy, h_angle, length=60, width=5,
                         color=self.HAND_DARK, tag="hands")
@@ -133,7 +131,7 @@ class AnalogClock:
         self._draw_hand(cx, cy, s_angle, length=95, width=1,
                         color=self.SECOND_COLOR, tag="hands", tail=15)
 
-        # Jewel drawn last so it sits on top of all hands
+        # Drawn last to sit on top of all hands
         self.canvas.create_oval(
             cx - 5, cy - 5, cx + 5, cy + 5,
             fill=self.JEWEL_OUTER, outline="", tags="hands",

@@ -5,10 +5,6 @@ from utils.time_helpers import format_stopwatch
 
 
 class Stopwatch:
-    """
-    Stopwatch with centisecond precision and ClockMemory lap storage.
-    States: idle → running → paused → running … → reset → idle.
-    """
 
     BG           = "#2C1810"
     PANEL_BG     = "#1a0e06"
@@ -25,7 +21,6 @@ class Stopwatch:
         self._running = False
         self._centiseconds = 0
         self._start_epoch: float = 0.0
-
         self._memory = ClockMemory()
         self._current_node: TimeRecord | None = None
 
@@ -98,12 +93,8 @@ class Stopwatch:
             padx=10, pady=3,
             cursor="hand2",
         )
-        tk.Button(
-            nav_frame, text="◀", command=self._nav_backward, **nav_btn_cfg
-        ).pack(side="left")
-        tk.Button(
-            nav_frame, text="▶", command=self._nav_forward, **nav_btn_cfg
-        ).pack(side="right")
+        tk.Button(nav_frame, text="◀", command=self._nav_backward, **nav_btn_cfg).pack(side="left")
+        tk.Button(nav_frame, text="▶", command=self._nav_forward, **nav_btn_cfg).pack(side="right")
         tk.Label(
             nav_frame, text="VUELTAS",
             bg=self.PANEL_BG, fg=self.MUTED_GOLD,
@@ -146,8 +137,7 @@ class Stopwatch:
         lap_num = len(self._memory) + 1
         time_str = format_stopwatch(self._centiseconds)
         now_str = datetime.datetime.now().strftime("%H:%M:%S")
-        node = self._memory.record_moment(lap_num, time_str, now_str)
-        self._current_node = node
+        self._current_node = self._memory.record_moment(lap_num, time_str, now_str)
         self._refresh_lap_display()
 
     def _reset(self):
@@ -191,14 +181,10 @@ class Stopwatch:
         records = self._memory.all_records()
         self._lap_text.config(state="normal")
         self._lap_text.delete("1.0", "end")
-
         for rec in records:
             label = f"  Vuelta {rec.lap_number:>2}   {rec.elapsed_time_str}   {rec.timestamp}\n"
-            if rec is self._current_node:
-                self._lap_text.insert("end", label, "highlight")
-            else:
-                self._lap_text.insert("end", label)
-
+            tag = "highlight" if rec is self._current_node else ""
+            self._lap_text.insert("end", label, tag)
         self._lap_text.config(state="disabled")
         if records and self._current_node:
             idx = next(
