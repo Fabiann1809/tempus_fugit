@@ -180,30 +180,27 @@ class AppWindow:
         self._spin_h = tk.Spinbox(
             spin_row, from_=0, to=23, wrap=True,
             textvariable=self._set_h, format="%02.0f",
-            command=self._preview_manual_time, **spin_cfg,
+            **spin_cfg,
         )
         self._spin_h.pack(side="left")
-        self._spin_h.bind("<KeyRelease>", lambda _: self._preview_manual_time())
 
         tk.Label(spin_row, text=":", **sep_cfg).pack(side="left", padx=2)
 
         self._spin_m = tk.Spinbox(
             spin_row, from_=0, to=59, wrap=True,
             textvariable=self._set_m, format="%02.0f",
-            command=self._preview_manual_time, **spin_cfg,
+            **spin_cfg,
         )
         self._spin_m.pack(side="left")
-        self._spin_m.bind("<KeyRelease>", lambda _: self._preview_manual_time())
 
         tk.Label(spin_row, text=":", **sep_cfg).pack(side="left", padx=2)
 
         self._spin_s = tk.Spinbox(
             spin_row, from_=0, to=59, wrap=True,
             textvariable=self._set_s, format="%02.0f",
-            command=self._preview_manual_time, **spin_cfg,
+            **spin_cfg,
         )
         self._spin_s.pack(side="left")
-        self._spin_s.bind("<KeyRelease>", lambda _: self._preview_manual_time())
 
         # Buttons
         btn_row = tk.Frame(frame, bg=self.APP_BG)
@@ -238,17 +235,6 @@ class AppWindow:
         ).pack(pady=(8, 0))
 
         return frame
-
-    def _preview_manual_time(self):
-        """Update the clock face live as the user scrolls the spinboxes."""
-        try:
-            h = int(self._set_h.get())
-            m = int(self._set_m.get())
-            s = int(self._set_s.get())
-            preview = datetime.datetime.now().replace(hour=h, minute=m, second=s)
-            self._analog.update_hands(preview)
-        except ValueError:
-            pass
 
     def _apply_manual_time(self):
         try:
