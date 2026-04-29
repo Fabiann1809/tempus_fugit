@@ -29,6 +29,9 @@ class AnalogClock:
     def __init__(self, parent: tk.Widget):
         self._flash_id: str | None = None
         self._flash_count = 0
+        self._current_dt = datetime.datetime.now()
+        self._drag_hand: str | None = None
+        self.on_drag = None  # callable(datetime) — set by AppWindow
 
         self.canvas = tk.Canvas(
             parent,
@@ -39,12 +42,18 @@ class AnalogClock:
         )
         self._draw_static_face()
 
+        self.canvas.bind("<ButtonPress-1>",   self._on_press)
+        self.canvas.bind("<B1-Motion>",       self._on_motion)
+        self.canvas.bind("<ButtonRelease-1>", self._on_release)
+        self.canvas.bind("<Motion>",          self._on_hover)
+
     def pack(self, **kwargs):
         self.canvas.pack(**kwargs)
 
     def update_hands(self, dt: datetime.datetime | None = None):
         if dt is None:
             dt = datetime.datetime.now()
+        self._current_dt = dt
         self._draw_hands(dt)
 
     def flash_border(self, times: int = 5):
@@ -52,6 +61,8 @@ class AnalogClock:
             self.canvas.after_cancel(self._flash_id)
         self._flash_count = times * 2
         self._run_flash()
+
+    # ── Static face ────────────────────────────────────────────────────
 
     def _draw_static_face(self):
         cx, cy, r = self.CX, self.CY, self.RADIUS
@@ -111,6 +122,8 @@ class AnalogClock:
             tags="border_ring",
         )
 
+    # ── Hands ──────────────────────────────────────────────────────────
+
     def _draw_hands(self, dt: datetime.datetime):
         self.canvas.delete("hands")
         cx, cy = self.CX, self.CY
@@ -150,6 +163,76 @@ class AnalogClock:
             fill=color, width=width,
             capstyle=tk.ROUND, tags=tag,
         )
+
+    # ── Drag interaction ───────────────────────────────────────────────
+
+    def _hand_angle(self, which: str) -> float:
+        dt = self._current_dt
+        h, m, s = dt.hour % 12, dt.minute, dt.second
+        if which == "hour":
+            return math.radians((h * 30) + (m * 0.5) - 90)
+        if which == "minute":
+            return math.radians((m * 6) + (s * 0.1) - 90)
+        return math.radians(s * 6 - 90)
+
+    def _nearest_hand(self, x: int, y: int) -> str | None:
+        dist = math.hypot(x - self.CX, y - self.CY)
+        if dist < 10 or dist > self.RADIUS - 4:
+            return None
+
+        click_angle = math.atan2(y - self.CY, x - self.CX)
+
+        def adiff(a: float, b: float) -> float:
+            d = abs(a - b) % (2 * math.pi)
+            return min(d, 2 * math.pi - d)
+
+        threshold = math.radians(20)
+        # minute checked first — it's longer and more accessible
+        if adiff(click_angle, self._hand_angle("minute")) < threshold:
+            return "minute"
+        if adiff(click_angle, self._hand_angle("hour")) < threshold:
+            return "hour"
+        return None
+
+    def _angle_to_time(self, x: int, y: int, hand: str) -> datetime.datetime:
+        deg = (math.degrees(math.atan2(y - self.CY, x - self.CX)) + 90) % 360
+        dt = self._current_dt
+
+        if hand == "hour":
+            hour_12 = int(deg / 30) % 12
+            # preserve AM / PM
+            hour_24 = hour_12 + (12 if dt.hour >= 12 else 0)
+            return dt.replace(hour=hour_24, microsecond=0)
+
+        # minute
+        minute = int(deg / 6) % 60
+        return dt.replace(minute=minute, microsecond=0)
+
+    def _on_press(self, event: tk.Event):
+        self._drag_hand = self._nearest_hand(event.x, event.y)
+        if self._drag_hand:
+            self.canvas.config(cursor="fleur")
+
+    def _on_motion(self, event: tk.Event):
+        if self._drag_hand is None:
+            return
+        new_dt = self._angle_to_time(event.x, event.y, self._drag_hand)
+        self._current_dt = new_dt
+        self._draw_hands(new_dt)
+        if self.on_drag:
+            self.on_drag(new_dt)
+
+    def _on_release(self, event: tk.Event):
+        self._drag_hand = None
+        self.canvas.config(cursor="")
+
+    def _on_hover(self, event: tk.Event):
+        if self._drag_hand:
+            return
+        hand = self._nearest_hand(event.x, event.y)
+        self.canvas.config(cursor="hand2" if hand else "")
+
+    # ── Flash ──────────────────────────────────────────────────────────
 
     def _run_flash(self):
         if self._flash_count <= 0:

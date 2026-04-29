@@ -136,6 +136,8 @@ class AppWindow:
         self._alarm = Alarm(content_area, on_trigger=self._analog.flash_border)
         self._countdown = Countdown(content_area, on_trigger=self._analog.flash_border)
 
+        self._analog.on_drag = self._on_clock_drag
+
         self._panels = [
             self._reloj_frame,
             self._stopwatch.frame,
@@ -271,6 +273,14 @@ class AppWindow:
         self._set_m.set(f"{now.minute:02d}")
         self._set_s.set(f"{now.second:02d}")
         self._reloj_status.set("✦  Hora local activa")
+
+    def _on_clock_drag(self, dt: datetime.datetime):
+        self._manual_time = dt
+        self._set_h.set(f"{dt.hour:02d}")
+        self._set_m.set(f"{dt.minute:02d}")
+        self._set_s.set(f"{dt.second:02d}")
+        self._time_var.set(format_hms(dt))
+        self._reloj_status.set(f"✦  Hora fijada: {dt.hour:02d}:{dt.minute:02d}:{dt.second:02d}")
 
     def _switch_tab(self, index: int):
         if self._active_tab == 1:
