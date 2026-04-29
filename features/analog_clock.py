@@ -187,11 +187,17 @@ class AnalogClock:
             return min(d, 2 * math.pi - d)
 
         threshold = math.radians(20)
-        # minute checked first — it's longer and more accessible
+
+        # Beyond minute-hand length (88px): only second hand (95px) reaches here
+        if dist > 70 and adiff(click_angle, self._hand_angle("second")) < threshold:
+            return "second"
         if adiff(click_angle, self._hand_angle("minute")) < threshold:
             return "minute"
         if adiff(click_angle, self._hand_angle("hour")) < threshold:
             return "hour"
+        # Second hand at shorter range (body of the hand)
+        if adiff(click_angle, self._hand_angle("second")) < threshold:
+            return "second"
         return None
 
     def _angle_to_time(self, x: int, y: int, hand: str) -> datetime.datetime:
@@ -204,9 +210,26 @@ class AnalogClock:
             hour_24 = hour_12 + (12 if dt.hour >= 12 else 0)
             return dt.replace(hour=hour_24, microsecond=0)
 
-        # minute
-        minute = int(deg / 6) % 60
-        return dt.replace(minute=minute, microsecond=0)
+        if hand == "minute":
+            old_m = dt.minute
+            new_m = int(deg / 6) % 60
+            new_dt = dt.replace(minute=new_m, microsecond=0)
+            # Crossing the 0/60 boundary advances or retreats the hour
+            if old_m > 45 and new_m < 15:
+                new_dt += datetime.timedelta(hours=1)
+            elif old_m < 15 and new_m > 45:
+                new_dt -= datetime.timedelta(hours=1)
+            return new_dt
+
+        # second
+        old_s = dt.second
+        new_s = int(deg / 6) % 60
+        new_dt = dt.replace(second=new_s, microsecond=0)
+        if old_s > 45 and new_s < 15:
+            new_dt += datetime.timedelta(minutes=1)
+        elif old_s < 15 and new_s > 45:
+            new_dt -= datetime.timedelta(minutes=1)
+        return new_dt
 
     def _on_press(self, event: tk.Event):
         self._drag_hand = self._nearest_hand(event.x, event.y)
