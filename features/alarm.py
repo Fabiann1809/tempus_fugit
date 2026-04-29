@@ -3,15 +3,18 @@ import datetime
 import sys
 
 
-def _beep():
+def _beep(stop_fn=None):
+    """Play alarm tones, checking stop_fn() between each tone so dismiss is near-instant."""
     try:
         import winsound
-        winsound.Beep(880, 400)
-        winsound.Beep(1100, 400)
-        winsound.Beep(880, 400)
+        for freq, ms in [(880, 250), (1100, 250), (880, 250)]:
+            if stop_fn and stop_fn():
+                return
+            winsound.Beep(freq, ms)
     except ImportError:
-        print("\a🔔 ALARMA")
-        sys.stdout.flush()
+        if not (stop_fn and stop_fn()):
+            print("\a🔔 ALARMA")
+            sys.stdout.flush()
 
 
 class Alarm:
@@ -211,7 +214,11 @@ class Alarm:
         if not alarm.get("beeping"):
             return
         import threading
-        threading.Thread(target=_beep, daemon=True).start()
+        threading.Thread(
+            target=_beep,
+            kwargs={"stop_fn": lambda: not alarm.get("beeping")},
+            daemon=True,
+        ).start()
         alarm["beep_after"] = self.frame.after(3500, lambda: self._repeat_beep(alarm))
 
     def _dismiss(self, alarm: dict):
