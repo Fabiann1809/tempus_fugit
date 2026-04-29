@@ -1,5 +1,3 @@
-"""time_helpers.py — Locale-aware time formatting utilities."""
-
 import datetime
 
 DAYS_ES = ("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom")
@@ -11,7 +9,6 @@ MONTHS_ES = (
 
 
 def format_hms(dt: datetime.datetime) -> str:
-    """Return HH:MM:SS string from a datetime object."""
     return dt.strftime("%H:%M:%S")
 
 
@@ -23,16 +20,11 @@ def format_date_es(dt: datetime.datetime) -> str:
 
 
 def format_year(dt: datetime.datetime) -> str:
-    """Return the four-digit year as a string."""
     return str(dt.year)
 
 
 def format_stopwatch(centiseconds: int) -> str:
-    """
-    Convert a raw centisecond count to MM:SS.cs display string.
-
-    centiseconds=6523 → '01:05.23'
-    """
+    """Convert centiseconds to MM:SS.cs — e.g. 6523 → '01:05.23'."""
     cs = centiseconds % 100
     total_seconds = centiseconds // 100
     secs = total_seconds % 60
@@ -41,11 +33,6 @@ def format_stopwatch(centiseconds: int) -> str:
 
 
 def format_countdown(total_seconds: int) -> str:
-    """
-    Convert a raw second count to MM:SS display string.
-
-    total_seconds=125 → '02:05'
-    """
     mins = total_seconds // 60
     secs = total_seconds % 60
     return f"{mins:02d}:{secs:02d}"

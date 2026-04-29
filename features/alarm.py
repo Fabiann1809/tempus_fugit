@@ -1,12 +1,10 @@
-"""alarm.py — Alarm feature with visual flash and audio beep."""
-
 import tkinter as tk
 import datetime
 import sys
 
 
 def _beep():
-    """Play a system beep; falls back to a console bell on non-Windows."""
+    """winsound on Windows; console bell fallback elsewhere."""
     try:
         import winsound
         winsound.Beep(880, 400)
@@ -18,16 +16,8 @@ def _beep():
 
 
 class Alarm:
-    """
-    Alarm panel: the user sets an HH:MM target time, activates it, and
-    when the current wall clock matches the target the clock face flashes
-    and a beep plays.
+    """Alarm panel. on_trigger callback decouples the flash from the analog clock."""
 
-    The on_trigger callback is supplied by app_window.py so that this
-    class stays decoupled from the analog clock.
-    """
-
-    # ── Palette ────────────────────────────────────────────────────────
     BG           = "#2C1810"
     PANEL_BG     = "#1a0e06"
     PANEL_BORDER = "#5C3A1E"
@@ -42,26 +32,20 @@ class Alarm:
         self._after_id: str | None = None
         self._active = False
         self._triggered = False
-        self._on_trigger = on_trigger   # callable() → flash clock face
+        self._on_trigger = on_trigger
 
         self.frame = tk.Frame(parent, bg=self.BG)
         self._build_ui()
 
-    # ------------------------------------------------------------------
-    # UI construction
-    # ------------------------------------------------------------------
-
     def _build_ui(self):
         f = self.frame
 
-        # Section label
         tk.Label(
             f, text="— alarma —",
             bg=self.BG, fg=self.LABEL_COLOR,
             font=("Georgia", 9),
         ).pack(pady=(10, 4))
 
-        # Time input row
         input_frame = tk.Frame(f, bg=self.BG)
         input_frame.pack(pady=8)
 
@@ -107,7 +91,6 @@ class Alarm:
         )
         self._min_spin.grid(row=0, column=3)
 
-        # Activate/deactivate button
         self._toggle_btn = tk.Button(
             f, text="ACTIVAR",
             command=self._toggle,
@@ -121,7 +104,6 @@ class Alarm:
         )
         self._toggle_btn.pack(pady=10)
 
-        # Status indicator
         self._status_var = tk.StringVar(value="✦  INACTIVA")
         tk.Label(
             f, textvariable=self._status_var,
@@ -129,17 +111,12 @@ class Alarm:
             font=("Georgia", 10),
         ).pack()
 
-        # Scheduled time readout
         self._scheduled_var = tk.StringVar(value="")
         tk.Label(
             f, textvariable=self._scheduled_var,
             bg=self.BG, fg=self.MUTED_GOLD,
             font=("Courier New", 10),
         ).pack(pady=(4, 0))
-
-    # ------------------------------------------------------------------
-    # Button callbacks
-    # ------------------------------------------------------------------
 
     def _toggle(self):
         if self._active:
@@ -177,10 +154,6 @@ class Alarm:
         self._hour_spin.config(state="normal")
         self._min_spin.config(state="normal")
 
-    # ------------------------------------------------------------------
-    # Alarm check loop (runs every second while active)
-    # ------------------------------------------------------------------
-
     def _check_alarm(self):
         if not self._active:
             return
@@ -197,12 +170,8 @@ class Alarm:
         if self._on_trigger:
             self._on_trigger()
         self.frame.after(0, _beep)
-        # Auto-deactivate after firing so it doesn't ring every second
+        # Deactivate after firing so the alarm doesn't retrigger every second
         self.frame.after(4000, self._deactivate)
-
-    # ------------------------------------------------------------------
-    # Lifecycle
-    # ------------------------------------------------------------------
 
     def stop(self):
         if self._after_id:

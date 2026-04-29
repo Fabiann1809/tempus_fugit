@@ -1,5 +1,3 @@
-"""countdown.py — Countdown timer feature."""
-
 import tkinter as tk
 import sys
 
@@ -15,17 +13,8 @@ def _beep():
 
 
 class Countdown:
-    """
-    Countdown timer panel.
+    """Countdown timer. States: idle → running → paused → running | idle (reset)."""
 
-    The user sets minutes and seconds via Spinbox inputs, then starts the
-    countdown.  When it reaches 00:00 the clock face flashes and a beep
-    plays via the on_trigger callback.
-
-    State machine: idle → running → paused → running | idle (reset)
-    """
-
-    # ── Palette ────────────────────────────────────────────────────────
     BG           = "#2C1810"
     PANEL_BG     = "#1a0e06"
     PANEL_BORDER = "#5C3A1E"
@@ -39,27 +28,21 @@ class Countdown:
     def __init__(self, parent: tk.Widget, on_trigger=None):
         self._after_id: str | None = None
         self._running = False
-        self._remaining: int = 0        # seconds remaining
-        self._on_trigger = on_trigger   # callable() → flash clock face
+        self._remaining: int = 0
+        self._on_trigger = on_trigger
 
         self.frame = tk.Frame(parent, bg=self.BG)
         self._build_ui()
 
-    # ------------------------------------------------------------------
-    # UI construction
-    # ------------------------------------------------------------------
-
     def _build_ui(self):
         f = self.frame
 
-        # Section label
         tk.Label(
             f, text="— cuenta regresiva —",
             bg=self.BG, fg=self.LABEL_COLOR,
             font=("Georgia", 9),
         ).pack(pady=(10, 4))
 
-        # Input row: MM  :  SS
         input_frame = tk.Frame(f, bg=self.BG)
         input_frame.pack(pady=6)
 
@@ -110,7 +93,6 @@ class Countdown:
         )
         self._sec_spin.grid(row=1, column=2, padx=4)
 
-        # Countdown display
         self._display_var = tk.StringVar(value="05:00")
         tk.Label(
             f, textvariable=self._display_var,
@@ -120,7 +102,6 @@ class Countdown:
             padx=20, pady=6,
         ).pack(pady=(8, 8))
 
-        # Buttons row
         btn_frame = tk.Frame(f, bg=self.BG)
         btn_frame.pack(pady=4)
 
@@ -147,14 +128,9 @@ class Countdown:
         )
         self._reset_btn.grid(row=0, column=1, padx=5)
 
-    # ------------------------------------------------------------------
-    # Button callbacks
-    # ------------------------------------------------------------------
-
     def _toggle_start(self):
         if not self._running:
             if self._remaining == 0:
-                # Load from spinboxes
                 try:
                     m = int(self._min_var.get())
                     s = int(self._sec_var.get())
@@ -188,17 +164,12 @@ class Countdown:
         self._reset_btn.config(state="disabled")
         self._min_spin.config(state="normal")
         self._sec_spin.config(state="normal")
-        # Restore display from spinboxes
         try:
             m = int(self._min_var.get())
             s = int(self._sec_var.get())
             self._display_var.set(f"{m:02d}:{s:02d}")
         except ValueError:
             self._display_var.set("00:00")
-
-    # ------------------------------------------------------------------
-    # Tick loop (1-second interval)
-    # ------------------------------------------------------------------
 
     def _tick(self):
         if not self._running:
@@ -219,10 +190,6 @@ class Countdown:
         self._display_var.set(f"{mins:02d}:{secs:02d}")
         self._remaining -= 1
         self._after_id = self.frame.after(1000, self._tick)
-
-    # ------------------------------------------------------------------
-    # Lifecycle
-    # ------------------------------------------------------------------
 
     def stop(self):
         if self._running and self._after_id:

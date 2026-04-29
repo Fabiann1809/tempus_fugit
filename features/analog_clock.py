@@ -1,26 +1,15 @@
-"""analog_clock.py — Tkinter Canvas analog clock rendering."""
-
 import math
 import tkinter as tk
 import datetime
 
 
 class AnalogClock:
-    """
-    Draws and animates a circular analog clock on a Tkinter Canvas.
 
-    The clock face uses warm sepia tones consistent with the antique-wood
-    visual theme.  All drawing is done with Tkinter primitives — no images
-    or external dependencies.
-    """
-
-    # ── Dimensions ─────────────────────────────────────────────────────
     DIAMETER = 260
-    RADIUS = DIAMETER // 2          # 130
-    CX = RADIUS                     # centre x on the canvas
-    CY = RADIUS                     # centre y on the canvas
+    RADIUS = DIAMETER // 2
+    CX = RADIUS
+    CY = RADIUS
 
-    # ── Palette ────────────────────────────────────────────────────────
     FACE_BG       = "#F5E6C8"
     FACE_BORDER   = "#B8860B"
     DECO_RING     = "#C4A882"
@@ -33,10 +22,9 @@ class AnalogClock:
     NUMERAL_MAJOR = "#5C2E0E"
     NUMERAL_MINOR = "#8B5E3C"
 
-    # ── Roman numerals ──────────────────────────────────────────────────
     ROMAN = ["XII", "I", "II", "III", "IV", "V",
              "VI", "VII", "VIII", "IX", "X", "XI"]
-    MAJOR_POSITIONS = {0, 3, 6, 9}   # XII, III, VI, IX
+    MAJOR_POSITIONS = {0, 3, 6, 9}  # XII, III, VI, IX
 
     def __init__(self, parent: tk.Widget):
         self._flash_id: str | None = None
@@ -51,41 +39,30 @@ class AnalogClock:
         )
         self._draw_static_face()
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
     def pack(self, **kwargs):
         self.canvas.pack(**kwargs)
 
     def update_hands(self, dt: datetime.datetime | None = None):
-        """Redraw all three clock hands for the given datetime (default: now)."""
         if dt is None:
             dt = datetime.datetime.now()
         self._draw_hands(dt)
 
     def flash_border(self, times: int = 5):
-        """Alternately colour the face border gold/red for `times` full cycles."""
+        """Alternate border color gold/red for `times` cycles."""
         if self._flash_id is not None:
             self.canvas.after_cancel(self._flash_id)
         self._flash_count = times * 2
         self._run_flash()
 
-    # ------------------------------------------------------------------
-    # Static face drawing (called once at construction)
-    # ------------------------------------------------------------------
-
     def _draw_static_face(self):
         cx, cy, r = self.CX, self.CY, self.RADIUS
 
-        # Outer border ring
         self.canvas.create_oval(
             cx - r, cy - r, cx + r, cy + r,
             fill=self.FACE_BG, outline=self.FACE_BORDER, width=4,
             tags="face",
         )
 
-        # Decorative dashed inner ring
         dr = 108
         self.canvas.create_oval(
             cx - dr, cy - dr, cx + dr, cy + dr,
@@ -93,14 +70,13 @@ class AnalogClock:
             dash=(2, 4), tags="face",
         )
 
-        # Tick marks
         for i in range(60):
             angle = math.radians(i * 6 - 90)
             cos_a, sin_a = math.cos(angle), math.sin(angle)
-            if i % 5 == 0:          # major hour tick
+            if i % 5 == 0:
                 r_outer, r_inner = r - 5, r - 18
                 color, width = self.TICK_MAJOR, 2
-            else:                   # minor minute tick
+            else:
                 r_outer, r_inner = r - 5, r - 11
                 color, width = self.TICK_MINOR, 1
             self.canvas.create_line(
@@ -109,7 +85,6 @@ class AnalogClock:
                 fill=color, width=width, tags="face",
             )
 
-        # Roman numerals
         num_r = r - 28
         for idx, numeral in enumerate(self.ROMAN):
             angle = math.radians(idx * 30 - 90)
@@ -130,16 +105,12 @@ class AnalogClock:
                     tags="face",
                 )
 
-        # Border oval tag for flash effect
+        # Separate oval so flash can recolor just the border without redrawing the face
         self._border_id = self.canvas.create_oval(
             cx - r, cy - r, cx + r, cy + r,
             fill="", outline=self.FACE_BORDER, width=4,
             tags="border_ring",
         )
-
-    # ------------------------------------------------------------------
-    # Hand drawing
-    # ------------------------------------------------------------------
 
     def _draw_hands(self, dt: datetime.datetime):
         self.canvas.delete("hands")
@@ -149,23 +120,20 @@ class AnalogClock:
         m = dt.minute
         s = dt.second
 
-        # Hour hand (includes fraction from minutes)
+        # Fractional angles give smooth continuous movement
         h_angle = math.radians((h * 30) + (m * 0.5) - 90)
         self._draw_hand(cx, cy, h_angle, length=60, width=5,
                         color=self.HAND_DARK, tag="hands")
 
-        # Minute hand (includes fraction from seconds)
         m_angle = math.radians((m * 6) + (s * 0.1) - 90)
         self._draw_hand(cx, cy, m_angle, length=88, width=3,
                         color=self.HAND_DARK, tag="hands")
 
-        # Second hand
         s_angle = math.radians(s * 6 - 90)
         self._draw_hand(cx, cy, s_angle, length=95, width=1,
-                        color=self.SECOND_COLOR, tag="hands",
-                        tail=15)
+                        color=self.SECOND_COLOR, tag="hands", tail=15)
 
-        # Centre jewel (redrawn on top of hands)
+        # Jewel drawn last so it sits on top of all hands
         self.canvas.create_oval(
             cx - 5, cy - 5, cx + 5, cy + 5,
             fill=self.JEWEL_OUTER, outline="", tags="hands",
@@ -184,10 +152,6 @@ class AnalogClock:
             fill=color, width=width,
             capstyle=tk.ROUND, tags=tag,
         )
-
-    # ------------------------------------------------------------------
-    # Flash effect
-    # ------------------------------------------------------------------
 
     def _run_flash(self):
         if self._flash_count <= 0:
